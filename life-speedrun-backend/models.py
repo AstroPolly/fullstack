@@ -1,8 +1,9 @@
 # models.py
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Text, Float
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Text, Float, Enum
 from sqlalchemy.dialects.postgresql import ARRAY
 from database import Base
 from sqlalchemy.sql import func
+import enum
 
 class User(Base):
     __tablename__ = "users"
@@ -60,4 +61,16 @@ class ScheduleEvent(Base):
     actual_end_time = Column(DateTime, nullable=True)       # когда реально закончил
     completed = Column(Boolean, default=False)              # сделано ли
     notes = Column(Text, nullable=True)                     # комментарий ("кот прыгнул", "вода пролилась")
+
+# Модель для файлов
+class EventFile(Base):
+    __tablename__ = "event_files"
+    id = Column(Integer, primary_key=True, index=True)
+    event_id = Column(Integer, ForeignKey("schedule_events.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    file_name = Column(String, nullable=False)
+    file_size = Column(Integer, nullable=False)  # размер в байтах
+    content_type = Column(String, nullable=False)  # MIME тип
+    s3_key = Column(String, nullable=False)  # ключ в S3
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     
