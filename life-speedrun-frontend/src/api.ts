@@ -3,11 +3,31 @@ const API_BASE = 'http://localhost:8000';
 
 const handleResponse = async (res: Response) => {
   if (!res.ok) {
-    let message = `HTTP ${res.status}`;
+    const contentType = res.headers.get('content-type');
+    let errorData: any;
     try {
-      const json = await res.json();
-      message = json.detail || json.msg || message;
-    } catch {}
+      errorData = contentType?.includes('application/json') 
+        ? await res.json() 
+        : await res.text();
+    } catch {
+      errorData = await res.text();
+    }
+    
+    // Логируем только то, что реально есть у Response
+    console.error('❌ API Error Details:', {
+      status: res.status,
+      statusText: res.statusText,
+      url: res.url,
+      body: errorData
+    });
+    
+    // Формируем читаемое сообщение для UI
+    const message = 
+      errorData?.detail?.[0]?.msg ||  // FastAPI validation error (первая ошибка)
+      errorData?.detail ||              // FastAPI simple error
+      errorData?.msg ||
+      (typeof errorData === 'string' ? errorData : `HTTP ${res.status}`);
+      
     throw new Error(message);
   }
   return res.json();
@@ -86,12 +106,14 @@ export interface EventsQueryParams {
 
 export const api = {
   // Auth
-  register: (email: string, password: string) =>
-    fetch(`${API_BASE}/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    }).then(handleResponse),
+  register: async (email: string, password: string) => {
+  const res = await fetch(`${API_BASE}/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }, // ← обязательно!
+    body: JSON.stringify({ email, password })
+  });
+  return handleResponse(res);
+  },
 
   verify: (email: string, code: string) =>
     fetch(`${API_BASE}/verify`, {
@@ -100,15 +122,17 @@ export const api = {
       body: JSON.stringify({ email, code })
     }).then(handleResponse),
 
-  login: (email: string, password: string) => {
-    const formData = new URLSearchParams();
-    formData.append('email', email);
-    formData.append('password', password);
-    return fetch(`${API_BASE}/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: formData.toString()
-    }).then(handleResponse);
+  login: async (email: string, password: string) => {
+  const formData = new URLSearchParams();
+  formData.append('username', email);  // ← было 'email', надо 'username'!
+  formData.append('password', password);
+  
+  const res = await fetch(`${API_BASE}/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: formData.toString()
+  });
+  return handleResponse(res);
   },
 
   me: (token: string) =>

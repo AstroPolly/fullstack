@@ -23,17 +23,22 @@ import hmac
 from datetime import datetime, timedelta
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
-
+from sqlalchemy import create_engine
+from models import Base 
 app = FastAPI(title="LyfeStyler API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3000",  # Create React App
+        "http://localhost:5173",  # Vite
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # S3 Configuration (using local storage for demo, but structured for S3)
 S3_BUCKET = os.getenv("S3_BUCKET", "lyfestyler-files")
 S3_REGION = os.getenv("S3_REGION", "us-east-1")
@@ -43,6 +48,10 @@ UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 ALLOWED_CONTENT_TYPES = ["image/jpeg", "image/png", "image/gif", "application/pdf", "text/plain", "application/json"]
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
+@app.on_event("startup")
+def init_db():
+    engine = create_engine("sqlite:///./app.db", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(bind=engine)  # создаст таблицы по моделям
 # Ensure upload directory exists
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 

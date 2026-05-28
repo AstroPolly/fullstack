@@ -61,9 +61,17 @@ const loadEventsForDate = async (date: Date) => {
 
   setEventsLoading(true);
   try {
-    const dateStr = date.toISOString().split('T')[0]; // "2025-06-10"
-    const data = await api.getEvents(token, dateStr);
-    setEvents(data);
+const dateStr = date.toISOString().split('T')[0];
+
+// Вариант А: используем диапазон дат (один день)
+const data = await api.getEvents(token, { 
+  date_from: dateStr, 
+  date_to: dateStr 
+});
+
+// Вариант Б: используем легаси-метод для обратной совместимости
+// const data = await api.getEventsByDate(token, dateStr); 
+// Но тогда нужно привести тип: (await api.getEventsByDate(...)) as Event[]
   } catch (err: any) {
     console.error('Ошибка загрузки событий:', err);
     // Можно показать toast или скрытую ошибку — пока лог в консоль
